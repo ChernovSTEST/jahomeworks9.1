@@ -1,11 +1,11 @@
-package ru.netology.delivery.test;
+package test;
 
 import com.codeborne.selenide.SelenideElement;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Keys;
-import ru.netology.delivery.data.DataGenerator;
+import data.DataGenerator;
 
 import java.time.Duration;
 
@@ -15,6 +15,10 @@ import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.open;
 
 class CardDeliveryTest {
+
+    private final DataGenerator.UserInfo validUser = DataGenerator.Registration.generateUser("ru");
+    private final int daysToAddForFirstMeeting = 5;
+    private final int daysToAddForSecondMeeting = 6;
 
     private static final String PLAN_BUTTON_TEXT = "Запланировать";
     private static final String SUCCESS_NOTIFICATION_TEXT = "Встреча успешно запланирована на ";
@@ -31,10 +35,7 @@ class CardDeliveryTest {
     @Test
     @DisplayName("Should successfully plan and replan meeting")
     void shouldSuccessfullyPlanAndReplanMeeting() {
-        DataGenerator.UserInfo validUser = DataGenerator.Registration.generateUser("ru");
-        int daysToAddForFirstMeeting = 5;
         String firstMeetingDate = DataGenerator.generateDate(daysToAddForFirstMeeting);
-        int daysToAddForSecondMeeting = 6;
         String secondMeetingDate = DataGenerator.generateDate(daysToAddForSecondMeeting);
 
         fillFormAndPlanMeeting(validUser.getCity(), firstMeetingDate, validUser.getName(), validUser.getPhone());
@@ -70,7 +71,7 @@ class CardDeliveryTest {
     private void verifySuccessNotification(String expectedText) {
         $("[data-test-id='success-notification'] .notification__content")
                 .shouldHave(exactText(expectedText))
-                .shouldBe(visible, Duration.ofSeconds(15));
+                .shouldBe(visible, Duration.ofSeconds(5));
     }
 
     private void verifyReplanConfirmation(String expectedText) {
@@ -81,5 +82,19 @@ class CardDeliveryTest {
 
     private void confirmReplan() {
         $("[data-test-id='replan-notification'] button").click();
+    }
+
+    @Test
+    @DisplayName("Should get error message if entered wrong number")
+    void shouldGetErrorMessageIfWrongNumber() {
+        $("[data-test-id='city'] input").setValue(validUser.getCity());
+        $("[data-test-id='date'] input").sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE);
+        $("[data-test-id='date'] input").setValue(DataGenerator.generateDate(daysToAddForFirstMeeting));
+        $("[data-test-id='name'] input").setValue(validUser.getName());
+        $("[data-test-id='phone'] input").setValue(DataGenerator.generateWrongPhone("ru"));
+        $("[data-test-id='agreement']").click();
+        $(byText(PLAN_BUTTON_TEXT)).click();
+        $("[data-test-id='phone'] .input__sub")
+                .shouldHave(exactText("Неверный формат номера мобильного телефона"));
     }
 }
